@@ -87,7 +87,6 @@ function ManageTasks() {
       className={`todo-container ${isDark ? "dark" : "light"} ${isFullscreen ? "fullscreen" : ""}`}
       data-llm={`${todoCount} todo, ${inProgressCount} in progress, ${doneCount} done`}
     >
-        Heyddddddddd
       <div className="todo-header">
         <h2><span className="brand-icon">&#9889;</span> Claude Hack Night</h2>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>

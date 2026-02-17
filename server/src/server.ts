@@ -35,7 +35,7 @@ const server = new McpServer(
   },
   {
     description:
-      "Manage tasks: view all, add new, toggle completion, or delete. Supports batch actions in a single call.",
+      "Call with no arguments to display the user's task board. Pass an `actions` array to add, move, or delete tasks — all actions are applied before returning the updated list.",
     inputSchema: {
       actions: z
         .array(ActionSchema)
