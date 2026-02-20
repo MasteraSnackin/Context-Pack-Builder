@@ -1,29 +1,19 @@
 import { McpServer } from "skybridge/server";
 import { z } from "zod";
 import { env } from "./env.js";
-import { executeActions, fetchTasks } from "./supabase.js";
+import { buildContextPack } from "./context-pack.js";
+import { saveContextPack, fetchContextPacks } from "./supabase.js";
 
 const SERVER_URL = "http://localhost:3000";
 
-const ActionSchema = z.object({
-  type: z.enum(["add", "delete", "toggle", "move"]),
-  title: z.string().optional().describe("Task title (required for add)"),
-  priority: z
-    .enum(["low", "medium", "high"])
-    .optional()
-    .describe("Task priority"),
-  dueDate: z.string().optional().describe("Due date (ISO string)"),
-  taskId: z.string().optional().describe("Task ID (required for delete/toggle/move)"),
-  status: z.enum(["todo", "in_progress", "done"]).optional().describe("Target status (required for move)"),
-});
-
 const server = new McpServer(
-  { name: "todo-app", version: "0.0.1" },
+  { name: "context-pack-builder", version: "0.0.1" },
   { capabilities: {} },
 ).registerWidget(
-  "manage-tasks",
+  "build-context-pack",
   {
-    description: "View and manage your to-do list",
+    description:
+      "Build a context pack for any task by aggregating code, docs, and meetings",
     _meta: {
       ui: {
         csp: {
@@ -35,12 +25,12 @@ const server = new McpServer(
   },
   {
     description:
-      "Call with no arguments to display the user's task board. Pass an `actions` array to add, move, or delete tasks — all actions are applied before returning the updated list.",
+      "Provide a task or goal description to get a comprehensive context pack with summary, key resources grouped by type, open questions, and suggested next actions.",
     inputSchema: {
-      actions: z
-        .array(ActionSchema)
-        .optional()
-        .describe("Actions to perform before returning the task list"),
+      goal: z
+        .string()
+        .min(1)
+        .describe("What are you trying to do? (e.g., 'Ship feature X', 'Debug incident 123')"),
     },
     annotations: {
       readOnlyHint: false,
@@ -48,7 +38,7 @@ const server = new McpServer(
       destructiveHint: false,
     },
   },
-  async ({ actions }, extra) => {
+  async ({ goal }, extra) => {
     const userId = (extra.authInfo?.extra as any)?.userId as
       | string
       | undefined;
@@ -56,7 +46,10 @@ const server = new McpServer(
     if (!userId) {
       return {
         content: [
-          { type: "text", text: "Please sign in to manage your tasks." },
+          {
+            type: "text",
+            text: "Please sign in to build your context pack.",
+          },
         ],
         isError: true,
         _meta: {
@@ -67,34 +60,41 @@ const server = new McpServer(
       };
     }
 
-    if (actions && actions.length > 0) {
-      await executeActions(userId, actions);
-    }
+    try {
+      // Build the context pack using MCP servers + LLM
+      const contextPack = await buildContextPack(userId, goal);
 
-    const { tasks, error } = await fetchTasks(userId);
+      // Save to database
+      await saveContextPack(userId, contextPack);
 
-    if (error) {
+      // Fetch all user's context packs for display
+      const { packs } = await fetchContextPacks(userId);
+
+      // Return structured content for the widget
+      return {
+        structuredContent: {
+          contextPack,
+          allPacks: packs,
+        },
+        content: [
+          {
+            type: "text",
+            text: `Context pack for '${goal}': ${contextPack.summary}. Found ${contextPack.resources.length} resources. Next actions: ${contextPack.nextActions.slice(0, 2).join(", ")}.`,
+          },
+        ],
+      };
+    } catch (error) {
+      console.error("Error building context pack:", error);
       return {
         content: [
-          { type: "text", text: `Error fetching tasks: ${error.message}` },
+          {
+            type: "text",
+            text: `Error building context pack: ${error instanceof Error ? error.message : "Unknown error"}`,
+          },
         ],
         isError: true,
       };
     }
-
-    const todo = tasks.filter((t) => t.status === "todo").length;
-    const inProgress = tasks.filter((t) => t.status === "in_progress").length;
-    const done = tasks.filter((t) => t.status === "done").length;
-
-    return {
-      structuredContent: { tasks },
-      content: [
-        {
-          type: "text",
-          text: `${todo} todo, ${inProgress} in progress, ${done} done. ${tasks.length} total tasks.`,
-        },
-      ],
-    };
   },
 );
 

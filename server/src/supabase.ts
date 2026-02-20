@@ -1,85 +1,65 @@
 import { createClient } from "@supabase/supabase-js";
 import { env } from "./env.js";
+import type { ContextPack } from "./types.js";
 
 export const supabase = createClient(
   env.SUPABASE_URL,
   env.SUPABASE_SERVICE_ROLE_KEY,
 );
 
-interface Action {
-  type: "add" | "delete" | "toggle" | "move";
-  title?: string;
-  priority?: "low" | "medium" | "high";
-  dueDate?: string;
-  taskId?: string;
-  status?: "todo" | "in_progress" | "done";
+// ============================================================
+// Context Pack Functions (Bug #5 fix: ContextPack type imported from types.ts)
+// Bug #8 fix: Removed dead tasks CRUD code from starter template
+// ============================================================
+
+/**
+ * Save a context pack to the database
+ */
+export async function saveContextPack(
+  userId: string,
+  pack: ContextPack
+): Promise<void> {
+  const { error } = await supabase.from("context_packs").insert({
+    id: pack.id,
+    user_id: userId,
+    title: pack.title,
+    summary: pack.summary,
+    resources: pack.resources,
+    open_questions: pack.openQuestions,
+    next_actions: pack.nextActions,
+  });
+
+  if (error) {
+    console.error("Error saving context pack:", error);
+    throw new Error(`Failed to save context pack: ${error.message}`);
+  }
 }
 
-export async function executeActions(userId: string, actions: Action[]) {
-  await Promise.all(
-    actions.map((action) => {
-      switch (action.type) {
-        case "add": {
-          if (!action.title) return;
-          return supabase.from("tasks").insert({
-            user_id: userId,
-            title: action.title,
-            priority: action.priority || "medium",
-            due_date: action.dueDate || null,
-            completed: false,
-          });
-        }
-        case "toggle": {
-          if (!action.taskId) return;
-          return supabase.rpc("toggle_task", {
-            p_task_id: action.taskId,
-            p_user_id: userId,
-          });
-        }
-        case "move": {
-          if (!action.taskId || !action.status) return;
-          return supabase
-            .from("tasks")
-            .update({
-              status: action.status,
-              completed: action.status === "done",
-            })
-            .eq("id", action.taskId)
-            .eq("user_id", userId);
-        }
-        case "delete": {
-          if (!action.taskId) return;
-          return supabase
-            .from("tasks")
-            .delete()
-            .eq("id", action.taskId)
-            .eq("user_id", userId);
-        }
-      }
-    }),
-  );
-}
-
-export async function fetchTasks(userId: string) {
-  const { data: tasks, error } = await supabase
-    .from("tasks")
-    .select("id, title, completed, priority, due_date, created_at, status")
+/**
+ * Fetch all context packs for a user
+ */
+export async function fetchContextPacks(userId: string) {
+  const { data: packs, error } = await supabase
+    .from("context_packs")
+    .select("id, title, summary, resources, open_questions, next_actions, created_at")
     .eq("user_id", userId)
     .order("created_at", { ascending: false });
 
   if (error) {
-    return { tasks: [], error };
+    console.error("Error fetching context packs:", error);
+    return { packs: [], error };
   }
 
-  const formattedTasks = (tasks || []).map((t) => ({
-    id: t.id,
-    title: t.title,
-    completed: t.completed,
-    priority: t.priority,
-    dueDate: t.due_date,
-    createdAt: t.created_at,
-    status: t.status || "todo",
+  // Convert snake_case to camelCase
+  const formattedPacks = (packs || []).map((p) => ({
+    id: p.id,
+    title: p.title,
+    summary: p.summary,
+    resources: p.resources || [],
+    openQuestions: p.open_questions || [],
+    nextActions: p.next_actions || [],
+    createdAt: p.created_at,
   }));
 
-  return { tasks: formattedTasks, error: null };
+  return { packs: formattedPacks, error: null };
 }
