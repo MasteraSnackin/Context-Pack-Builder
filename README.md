@@ -120,6 +120,8 @@ flowchart TB
 
 This architecture separates concerns clearly: the frontend handles user interaction, the MCP server orchestrates data gathering, external MCPs provide raw data, the LLM adds intelligence, and Supabase ensures persistence.
 
+For more information, see the [Architecture Overview](https://github.com/MasteraSnackin/Context-Pack-Builder/blob/main/ARCHITECTURE.md).
+
 ## Installation
 
 ### Prerequisites
