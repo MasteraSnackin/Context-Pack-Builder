@@ -46,6 +46,10 @@ Perfect for:
 - **🔐 Secure Authentication** — Clerk-based auth with row-level security (RLS) in Supabase
 - **🔧 Extensible Architecture** — Easy to add more MCP servers (GitHub, Calendar, Slack, Email)
 
+
+<img width="1886" height="862" alt="image" src="https://github.com/user-attachments/assets/2a2b4e18-cc7a-4a49-877a-fa06d5650599" />
+
+
 ## Tech Stack
 
 **Frontend:**
@@ -341,6 +345,10 @@ CREATE POLICY "Users can insert own packs"
   ON context_packs FOR INSERT
   WITH CHECK (auth.uid()::text = user_id);
 ```
+## Video Demo
+
+https://youtu.be/D_D2Vei1Jcs
+
 
 ## Screenshots / Demo
 
