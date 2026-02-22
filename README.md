@@ -347,7 +347,7 @@ CREATE POLICY "Users can insert own packs"
 ```
 ## Video Demo
 
-https://youtu.be/D_D2Vei1Jcs
+[![Video Demo](https://img.youtube.com/vi/D_D2Vei1Jcs/maxresdefault.jpg)](https://youtu.be/D_D2Vei1Jcs)
 
 
 ## Screenshots / Demo
